@@ -8,6 +8,8 @@ API_URL = "https://api.up.com.au/api/v1"
 player_1_token = os.environ.get("TOKEN1")
 player_2_token = os.environ.get("TOKEN2")
 
+def get_from(url: str, token:str) -> dict:
+    return requests.get(url, headers={"Authorization": f"Bearer {token}"}).json()
 
 def get_from_api(endpoint: str, token: str) -> dict:
     return requests.get(f"{API_URL}/{endpoint}", headers={"Authorization": f"Bearer {token}"}).json()
@@ -34,14 +36,24 @@ def extract_account_ids(account_json: dict) -> Tuple[list[str], list[str]]:
     return (ids, _2up_ids)
 
 
-def get_shared_transactions(shared_account_ids: list[str]) -> dict[str, list[str]]:
+def get_shared_transactions(shared_account_ids: list[str]) -> dict[str, list[dict]]:
     print(f"Shared account ids: {shared_account_ids}")
-    shared_transactions = {}
+    shared_transactions : dict[str, list[dict]] = {}
 
     # doesn't account for pagination
     for id in shared_account_ids:
-        shared_transactions[id] = get_from_api(
-            f"accounts/{id}/transactions", player_1_token)["data"]
+        response = get_from_api(
+            f"accounts/{id}/transactions", player_1_token)
+        shared_transactions[id] = response["data"]
+        
+        while response["links"]["next"] is not None:
+            print(response["links"]["next"])
+
+            response = get_from( 
+            response["links"]["next"], player_1_token)
+            
+            shared_transactions[id].extend(response["data"])
+
 
     return shared_transactions
 
@@ -56,13 +68,13 @@ def get_cash_flow_by_player(transactions: list[dict], player_1_accounts_ids: lis
     for t in transactions:
         value_in_base_units = int(
             t["attributes"]["amount"]["valueInBaseUnits"])
-        print(value_in_base_units)
+        #print(value_in_base_units)
 
         transfer_account: dict = t["relationships"]["transferAccount"]
 
         if transfer_account.get('data') is not None:
             transfer_account_id : str = transfer_account["data"]["id"]
-            print(f"transfer account id: {transfer_account_id}")
+            #print(f"transfer account id: {transfer_account_id}")
 
             if transfer_account_id in player_1_accounts_ids:
                 if value_in_base_units > 0:
