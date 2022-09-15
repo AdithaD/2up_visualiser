@@ -131,7 +131,7 @@ def pretty_print_account_cashflow(account : AccountByPlayer, player_1_account_na
 
     print(f"Player 1 Contribution     \t In: {format_currency(account.player_1_cashflow.in_flow)}, Out: {format_currency(account.player_1_cashflow.out_flow)}")
     print(f"Player 2 Contribution     \t In: {format_currency(account.player_2_cashflow.in_flow)}, Out: {format_currency(account.player_2_cashflow.out_flow)}")
-    print(f"Unaccounted Contribution  \t In: {format_currency(account.unaccounted_cashflow.in_flow)}, Out: {format_currency(account.unaccounted_cashflow.out_flow)})")
+    print(f"Unaccounted Contribution  \t In: {format_currency(account.unaccounted_cashflow.in_flow)}, Out: {format_currency(account.unaccounted_cashflow.out_flow)}")
 
     print("\n2UP Internal Cashflows: ")
     for sa in account.shared_cashflows:
