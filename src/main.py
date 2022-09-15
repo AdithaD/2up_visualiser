@@ -4,16 +4,22 @@ from dataclasses import dataclass
 
 API_URL = "https://api.up.com.au/api/v1"
 
+# Loading environment variables
+
 player_1_token = os.environ.get("TOKEN1")
 player_2_token = os.environ.get("TOKEN2")
 
-
 @dataclass
 class Cashflow:
+    """
+    Represents the sums of incoming transaction values and outgoing transaction values
+    """
     in_flow: int
     out_flow: int
 
+    
     def update(self, amount: int):
+        """Updates `in_flow` if positive and `outflow` if negative."""
         if amount < 0:
             self.out_flow += amount
         else:
@@ -27,13 +33,17 @@ class Cashflow:
         self.in_flow += cf.in_flow
         self.out_flow += cf.out_flow
         return self
-        
+
     def __str__(self) -> str:
         return f"In: {format_currency(self. in_flow)}, Out: {format_currency(self.out_flow)}"
 
 
 @dataclass
 class AccountByPlayer:
+    """
+    Breaks down account cashflow into an account by player, other 2UP accounts and unaccounted for transactions.
+    
+    """
     account_id: str
     player_1_cashflow: Cashflow
     player_2_cashflow: Cashflow
@@ -43,15 +53,18 @@ class AccountByPlayer:
 
 @dataclass
 class PlayerAccountIds:
+    """Holds the unique ids of a Player's individual accounts and joint accounts"""
     individual_accounts: list[str]
     joint_accounts: list[str]
 
 
 def get_from(url: str, token: str) -> dict:
+    """Returns the JSON body of a GET request at `url` with Bearer Authorisation given by `token`"""
     return requests.get(url, headers={"Authorization": f"Bearer {token}"}).json()
 
 
 def get_from_api(endpoint: str, token: str) -> dict:
+    """Returns the JSON body of a GET request at `{UP_API_URL}/endpoint` with Bearer Authorisation given by `token`"""
     response = requests.get(f"{API_URL}/{endpoint}",
                             headers={"Authorization": f"Bearer {token}"})
 
@@ -66,6 +79,7 @@ def get_from_api(endpoint: str, token: str) -> dict:
 
 
 def map_account_ids_to_names(account_json: dict) -> dict[str, str]:
+    """Creates a `dict` that maps an unique account ID to its display name"""
     accounts: list = account_json["data"]
     ids_to_names = {}
 
@@ -76,6 +90,7 @@ def map_account_ids_to_names(account_json: dict) -> dict[str, str]:
 
 
 def extract_account_ids(account_json: dict) -> PlayerAccountIds:
+    """Extracts the account ids from the json data from a GET request to `{UP_API_URL}/accounts"""
     accounts: list = account_json["data"]
     ids: list[str] = []
     _2up_ids: list[str] = []
@@ -88,11 +103,12 @@ def extract_account_ids(account_json: dict) -> PlayerAccountIds:
     return PlayerAccountIds(ids, _2up_ids)
 
 
-def get_shared_transactions(shared_account_ids: list[str]) -> dict[str, list[dict]]:
+def get_joint_transactions(joint_account_ids: list[str]) -> dict[str, list[dict]]:
+    """Generates a dictionary mapping joint account IDs to transactions. Automatically cycles pages to get all transactions"""
     shared_transactions: dict[str, list[dict]] = {}
 
     # doesn't account for pagination
-    for id in shared_account_ids:
+    for id in joint_account_ids:
         response = get_from_api(
             f"accounts/{id}/transactions", player_1_token)
         shared_transactions[id] = response["data"]
@@ -107,6 +123,12 @@ def get_shared_transactions(shared_account_ids: list[str]) -> dict[str, list[dic
 
 
 def get_cash_flow_by_player(account_id: str, transactions: list[dict], player_1_accounts_ids: PlayerAccountIds, player_2_account_ids: PlayerAccountIds) -> AccountByPlayer:
+    """
+    Processs the transactions to split total cashflow by players, 2UP internal accounts and unaccounted for transactions
+
+        Returns:
+            account_by_player (AccountByPlayer): A data structure holding the separated cashflows
+    """
     player_1_cashflow = Cashflow(0, 0)
     player_2_cashflow = Cashflow(0, 0)
     _2up_internal_cashflow: dict[str, Cashflow] = {}
@@ -141,10 +163,12 @@ def get_cash_flow_by_player(account_id: str, transactions: list[dict], player_1_
 
 
 def format_currency(cents: int) -> str:
+    """Formats cents into a visually pleasing currency format"""
     return '${:,.2f}'.format(cents / 100)
 
 
-def pretty_print_account_cashflow(account: AccountByPlayer, player_1_account_names: dict[str, str]) -> None:
+def pretty_print_account_by_player_cashflow(account: AccountByPlayer, player_1_account_names: dict[str, str]) -> None:
+    """Prints the account by player cashflow split in a aesthetic way"""
     print("-" * 40)
     print(f"Source account: {player_1_account_names[account.account_id]}")
 
@@ -165,9 +189,11 @@ def pretty_print_account_cashflow(account: AccountByPlayer, player_1_account_nam
 
 
 def main():
+    # Loads account data
     player_1_accounts_json = get_from_api("accounts", player_1_token)
     player_2_accounts_json = get_from_api("accounts", player_2_token)
 
+    # Checks to see if the joint accounts match. Otherwise, this tool won't work.
     if player_1_accounts_json == {} or player_2_accounts_json == {}:
         if player_1_accounts_json == {}:
             print("Couldn't get player 1 data. Token is possibly wrong or invalid.")
@@ -193,13 +219,14 @@ def main():
     else:
         print("Joint accounts match! Continuing...")
 
-    shared_transactions_by_account = get_shared_transactions(
+    shared_transactions_by_account = get_joint_transactions(
         player_1_account_ids.joint_accounts)
 
     total_player_1_cashflow = Cashflow(0, 0)
     total_player_2_cashflow = Cashflow(0, 0)
     total_unaccounted_cashflow = Cashflow(0, 0)
     
+    # Pretty prints the account cashflow splits whilst generating a total contribution cashflow for each player
     for st in shared_transactions_by_account:
         abp = get_cash_flow_by_player(st,
                                       shared_transactions_by_account[st], player_1_account_ids, player_2_account_ids)
@@ -208,7 +235,7 @@ def main():
         total_player_2_cashflow += abp.player_2_cashflow
         total_unaccounted_cashflow += abp.unaccounted_cashflow
 
-        pretty_print_account_cashflow(
+        pretty_print_account_by_player_cashflow(
             abp, player_1_account_name_map)
 
     print("\nTotals:")
