@@ -31,7 +31,16 @@ def get_from(url: str, token:str) -> dict:
     return requests.get(url, headers={"Authorization": f"Bearer {token}"}).json()
 
 def get_from_api(endpoint: str, token: str) -> dict:
-    return requests.get(f"{API_URL}/{endpoint}", headers={"Authorization": f"Bearer {token}"}).json()
+    response = requests.get(f"{API_URL}/{endpoint}", headers={"Authorization": f"Bearer {token}"})
+
+    if response.status_code == 200:
+        return response.json()
+    elif response.status_code == 401:
+        print("Token not authorised.")
+        return {}
+    else:
+        print(f"Reponse returned status {response.status_code}")
+        return {}
 
 def map_account_ids_to_names(account_json: dict) -> dict[str, str]:
     accounts: list = account_json["data"]
@@ -149,6 +158,14 @@ def main():
     player_1_accounts_json = get_from_api("accounts", player_1_token)
     player_2_accounts_json = get_from_api("accounts", player_2_token)
 
+    if player_1_accounts_json == {} or player_2_accounts_json == {}:
+        if player_1_accounts_json  == {}:
+            print("Couldn't get player 1 data. Token is possibly wrong or invalid.")
+        if player_2_accounts_json  == {}:
+            print("Couldn't get player 2 data. Token is possibly wrong or invalid.")
+        print("Quitting!")
+        exit()
+
     player_1_account_ids = extract_account_ids(
         player_1_accounts_json)
     player_2_account_ids = extract_account_ids(
@@ -172,6 +189,7 @@ def main():
         pretty_print_account_cashflow(get_cash_flow_by_player(st, 
             shared_transactions_by_account[st], player_1_account_ids, player_2_account_ids), player_1_account_name_map, player_2_account_name_map)
 
+    
 
 if __name__ == "__main__":
     main()
