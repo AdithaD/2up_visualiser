@@ -1,6 +1,4 @@
-import json
 import os
-from typing import Tuple
 import requests
 from dataclasses import dataclass
 
@@ -14,6 +12,12 @@ class Cashflow:
     in_flow : int
     out_flow : int
 
+    def add(self, cf):
+        self.in_flow += cf.in_flow
+        self.out_flow += cf.out_flow
+
+    def __str__(self) -> str:
+        return f"In: {format_currency(self. in_flow)}, Out: {format_currency(self.out_flow)}"
 @dataclass
 class AccountByPlayer:
     account_id : str
@@ -86,7 +90,7 @@ def get_shared_transactions(shared_account_ids: list[str]) -> dict[str, list[dic
     return shared_transactions
 
 
-def get_cash_flow_by_player(account_id: str, transactions: list[dict], player_1_accounts_ids: PlayerAccountIds, player_2_account_ids: PlayerAccountIds) -> Tuple[Cashflow, Cashflow, Cashflow, dict[str, Cashflow]]:
+def get_cash_flow_by_player(account_id: str, transactions: list[dict], player_1_accounts_ids: PlayerAccountIds, player_2_account_ids: PlayerAccountIds) -> AccountByPlayer:
     player_1_cashflow = Cashflow(0,0)
     player_2_cashflow = Cashflow(0,0)
     _2up_internal_cashflow : dict[str, Cashflow] = {}
@@ -138,9 +142,9 @@ def pretty_print_account_cashflow(account : AccountByPlayer, player_1_account_na
     print("-" *40)
     print(f"Source account: {player_1_account_names[account.account_id]}")
 
-    print(f"Player 1 Contribution     \t In: {format_currency(account.player_1_cashflow.in_flow)}, Out: {format_currency(account.player_1_cashflow.out_flow)}")
-    print(f"Player 2 Contribution     \t In: {format_currency(account.player_2_cashflow.in_flow)}, Out: {format_currency(account.player_2_cashflow.out_flow)}")
-    print(f"Unaccounted Contribution  \t In: {format_currency(account.unaccounted_cashflow.in_flow)}, Out: {format_currency(account.unaccounted_cashflow.out_flow)}")
+    print(f"Player 1 Contribution     \t {account.player_1_cashflow}")
+    print(f"Player 2 Contribution     \t {account.player_2_cashflow}")
+    print(f"Unaccounted Contribution  \t {account.unaccounted_cashflow}")
 
     print("\n2UP Internal Cashflows: ")
     for sa in account.shared_cashflows:
@@ -148,7 +152,7 @@ def pretty_print_account_cashflow(account : AccountByPlayer, player_1_account_na
             cf = account.shared_cashflows[sa]
 
             print(f"Account: {player_1_account_names[sa]}")
-            print(f"In: {format_currency(cf.in_flow)}, Out: {format_currency(cf.out_flow)} \n")
+            print(f"{cf}")
 
     print("-" * 40 + "\n")
     pass
@@ -185,11 +189,23 @@ def main():
 
     shared_transactions_by_account = get_shared_transactions(player_1_account_ids.joint_accounts)
 
+    total_player_1_cashflow = Cashflow(0,0)
+    total_player_2_cashflow = Cashflow(0,0)
+    total_unaccounted_cashflow = Cashflow(0,0)
     for st in shared_transactions_by_account:
-        pretty_print_account_cashflow(get_cash_flow_by_player(st, 
-            shared_transactions_by_account[st], player_1_account_ids, player_2_account_ids), player_1_account_name_map, player_2_account_name_map)
+        abp = get_cash_flow_by_player(st, 
+            shared_transactions_by_account[st], player_1_account_ids, player_2_account_ids)
+        
+        total_player_1_cashflow.add(abp.player_1_cashflow)
+        total_player_2_cashflow.add(abp.player_2_cashflow)
+        total_unaccounted_cashflow.add(abp.unaccounted_cashflow)
 
-    
+        pretty_print_account_cashflow(abp, player_1_account_name_map, player_2_account_name_map)
+
+    print("\nTotals:")
+    print(f"Total player 1 contribution {total_player_1_cashflow}") 
+    print(f"Total player 2 contribution {total_player_2_cashflow}") 
+    print(f"Total unaccounted contribution {total_unaccounted_cashflow}") 
 
 if __name__ == "__main__":
     main()
