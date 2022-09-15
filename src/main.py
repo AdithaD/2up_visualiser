@@ -19,10 +19,15 @@ class Cashflow:
         else:
             self.in_flow += amount
 
-    def add(self, cf):
+    def __add__(self, cf):
+        return Cashflow(self.in_flow + cf.in_flow, self.out_flow + cf.out_flow)
+
+        
+    def __iadd__(self, cf):
         self.in_flow += cf.in_flow
         self.out_flow += cf.out_flow
-
+        return self
+        
     def __str__(self) -> str:
         return f"In: {format_currency(self. in_flow)}, Out: {format_currency(self.out_flow)}"
 
@@ -194,13 +199,14 @@ def main():
     total_player_1_cashflow = Cashflow(0, 0)
     total_player_2_cashflow = Cashflow(0, 0)
     total_unaccounted_cashflow = Cashflow(0, 0)
+    
     for st in shared_transactions_by_account:
         abp = get_cash_flow_by_player(st,
                                       shared_transactions_by_account[st], player_1_account_ids, player_2_account_ids)
 
-        total_player_1_cashflow.add(abp.player_1_cashflow)
-        total_player_2_cashflow.add(abp.player_2_cashflow)
-        total_unaccounted_cashflow.add(abp.unaccounted_cashflow)
+        total_player_1_cashflow += abp.player_1_cashflow
+        total_player_2_cashflow += abp.player_2_cashflow
+        total_unaccounted_cashflow += abp.unaccounted_cashflow
 
         pretty_print_account_cashflow(
             abp, player_1_account_name_map)
