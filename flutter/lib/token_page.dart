@@ -70,8 +70,6 @@ class _TokenPageState extends State<TokenPage> {
                               SharedPreferences.getInstance().then((sp) {
                                 sp.setString("token1", token_1);
                                 sp.setString("token2", token_2);
-
-                                Navigator.pop(context);
                               }).catchError((error) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(

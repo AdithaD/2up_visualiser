@@ -1,8 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' as intl;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+
+import 'package:_2up_visualiser/api/app_cache.dart';
 
 const UP_API_URL = "https://api.up.com.au/api/v1";
 final CURRENCY_FORMAT = intl.NumberFormat("#,##0.00", "en_US");
@@ -58,16 +62,17 @@ Future<Map<dynamic, dynamic>> getFrom(String url, String token) async {
   return decodedResponse;
 }
 
-Future<Map<dynamic, dynamic>> getFromApi(String endpoint, String token) async {
+Future<Map<dynamic, dynamic>> getFromApi(String endpoint, String token,
+    {bool shouldCache = false}) async {
   var url = Uri.parse("$UP_API_URL/$endpoint");
 
   var response =
       await http.get(url, headers: {'Authorization': "Bearer $token"});
 
-  var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
-
-  return decodedResponse;
+  return jsonDecode(utf8.decode(response.bodyBytes)) as Map;
 }
+
+// Filename is first 5 characters of token _ endpoint
 
 Map<String, String> mapAccountIdsToName(Map<dynamic, dynamic> accountJson) {
   List<dynamic> accounts = accountJson["data"];
@@ -194,8 +199,10 @@ Future<String> generateAccountSummary() async {
   final token2 = prefs.getString("token2");
 
   if (token1 != null && token2 != null) {
-    var player1AccountsJSON = await getFromApi("accounts", token1);
-    var player2AccountsJSON = await getFromApi("accounts", token2);
+    var player1AccountsJSON =
+        await getFromCacheOrUpdate("accounts", token1, CACHE_TIMEOUT);
+    var player2AccountsJSON =
+        await getFromCacheOrUpdate("accounts", token2, CACHE_TIMEOUT);
 
     var player1AccountIds = extractAccountIds(player1AccountsJSON);
     var player2AccountIds = extractAccountIds(player2AccountsJSON);

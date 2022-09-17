@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:_2up_visualiser/api/app_cache.dart';
 import 'package:_2up_visualiser/summary_page.dart';
 import 'package:_2up_visualiser/token_page.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -28,7 +32,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
       ),
       home: FutureBuilder(
-        future: SharedPreferences.getInstance(),
+        future: initApp(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             var sf = snapshot.data;
@@ -52,5 +56,12 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Future<SharedPreferences> initApp() async {
+    var appDocDir = await getApplicationDocumentsDirectory();
+    Directory("${appDocDir.path}${getCacheDirectory()}").createSync();
+    print("created cache directory");
+    return SharedPreferences.getInstance();
   }
 }

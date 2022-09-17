@@ -1,7 +1,8 @@
+import 'package:_2up_visualiser/api/app_cache.dart';
 import 'package:_2up_visualiser/api/up_api.dart';
 import 'package:flutter/material.dart';
 
-class SummaryPage extends StatelessWidget {
+class SummaryPage extends StatefulWidget {
   const SummaryPage({
     Key? key,
     required this.token_1,
@@ -12,10 +13,23 @@ class SummaryPage extends StatelessWidget {
   final String token_2;
 
   @override
+  State<SummaryPage> createState() => _SummaryPageState();
+}
+
+class _SummaryPageState extends State<SummaryPage> {
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Account Summary"),
+        title: const Text("Account Summary"),
+        actions: [
+          IconButton(
+              onPressed: () {
+                clearCache();
+                setState(() {});
+              },
+              icon: const Icon(Icons.refresh))
+        ],
       ),
       body: FutureBuilder(
           future: generateAccountSummary(),
@@ -27,14 +41,14 @@ class SummaryPage extends StatelessWidget {
                 color: Colors.red,
                 child: Column(children: [
                   Text(
-                    token_1,
+                    widget.token_1,
                     style: Theme.of(context).textTheme.bodyText1,
                   ),
                   const SizedBox(
                     height: 40,
                   ),
                   Text(
-                    token_2,
+                    widget.token_2,
                     style: Theme.of(context).textTheme.bodyText1,
                   ),
                   Text(
@@ -44,7 +58,9 @@ class SummaryPage extends StatelessWidget {
                 ]),
               );
             } else {
-              return const CircularProgressIndicator();
+              return const Align(
+                  alignment: Alignment.center,
+                  child: CircularProgressIndicator());
             }
           }),
     );
