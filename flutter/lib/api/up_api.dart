@@ -1,15 +1,13 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' as intl;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'package:_2up_visualiser/api/app_cache.dart';
 
-const UP_API_URL = "https://api.up.com.au/api/v1";
-final CURRENCY_FORMAT = intl.NumberFormat("#,##0.00", "en_US");
+const upApiUrl = "https://api.up.com.au/api/v1";
+final currencyFormat = intl.NumberFormat("#,##0.00", "en_US");
 
 class Cashflow {
   int inFlow;
@@ -64,7 +62,7 @@ Future<Map<dynamic, dynamic>> getFrom(String url, String token) async {
 
 Future<Map<dynamic, dynamic>> getFromApi(String endpoint, String token,
     {bool shouldCache = false}) async {
-  var url = Uri.parse("$UP_API_URL/$endpoint");
+  var url = Uri.parse("$upApiUrl/$endpoint");
 
   var response =
       await http.get(url, headers: {'Authorization': "Bearer $token"});
@@ -164,7 +162,7 @@ AccountByPlayer getCashFlowByPlayer(
 }
 
 String formatCurrency(int valueInCents) {
-  return CURRENCY_FORMAT.format(valueInCents / 100);
+  return currencyFormat.format(valueInCents / 100);
 }
 
 AccountByPlayer generateTotals(
@@ -200,9 +198,9 @@ Future<String> generateAccountSummary() async {
 
   if (token1 != null && token2 != null) {
     var player1AccountsJSON =
-        await getFromCacheOrUpdate("accounts", token1, CACHE_TIMEOUT);
+        await getFromCacheOrUpdate("accounts", token1, cacheTimeout);
     var player2AccountsJSON =
-        await getFromCacheOrUpdate("accounts", token2, CACHE_TIMEOUT);
+        await getFromCacheOrUpdate("accounts", token2, cacheTimeout);
 
     var player1AccountIds = extractAccountIds(player1AccountsJSON);
     var player2AccountIds = extractAccountIds(player2AccountsJSON);

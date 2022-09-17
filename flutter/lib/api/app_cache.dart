@@ -4,15 +4,15 @@ import 'dart:io';
 import 'package:_2up_visualiser/api/up_api.dart';
 import 'package:path_provider/path_provider.dart';
 
-const CACHE_TIMEOUT = 86400;
-const CACHE_DIRECTORY = "/cache/";
+const cacheTimeout = 86400;
+const cacheDirectory = "/cache/";
 
 String getCacheDirectory() {
-  return CACHE_DIRECTORY;
+  return cacheDirectory;
 }
 
 String getCachePath(String appDocDirPath, String fileName) {
-  return "$appDocDirPath$CACHE_DIRECTORY$fileName";
+  return "$appDocDirPath$cacheDirectory$fileName";
 }
 
 String generateCacheFileName(String apiEndpoint, String token) {
@@ -38,7 +38,7 @@ Future<void> cacheData(String fileName, dynamic data) async {
 Future<void> clearCache() async {
   Directory appDocDir = await getApplicationDocumentsDirectory();
 
-  Directory cacheDir = Directory(appDocDir.path + CACHE_DIRECTORY);
+  Directory cacheDir = Directory(appDocDir.path + cacheDirectory);
   cacheDir.deleteSync(recursive: true);
   cacheDir.createSync();
 }
