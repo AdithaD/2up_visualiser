@@ -65,13 +65,22 @@ Future<Map<dynamic, dynamic>> getFrom(String url, String token) async {
 }
 
 Future<Map<dynamic, dynamic>> getFromApi(String endpoint, String token,
-    {bool shouldCache = false}) async {
+    {shouldPaginate = true}) async {
   var url = Uri.parse("$upApiUrl/$endpoint");
 
   var response =
       await http.get(url, headers: {'Authorization': "Bearer $token"});
 
-  return jsonDecode(utf8.decode(response.bodyBytes)) as Map;
+  var body = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
+
+  List<Map<String, dynamic>> data = [...body["data"]];
+
+  while (body["links"]["next"] != null && shouldPaginate) {
+    body = await getFrom(body["links"]["next"], token);
+
+    data = [...body["data"], ...data];
+  }
+  return {"data": data};
 }
 
 // Filename is first 5 characters of token _ endpoint
@@ -109,17 +118,12 @@ Future<Map<String, List<Map<String, dynamic>>>> getJointTransactions(
   Map<String, List<Map<String, dynamic>>> jointTransactions = {};
 
   for (var id in jointAccountIds) {
-    var response = await getFromApi("accounts/$id/transactions", authToken);
+    print("loading $id");
+    var data = await getFromCacheOrUpdate(
+        "accounts/$id/transactions", authToken, 86400 * 1000);
 
-    List<Map<String, dynamic>> data = [...response["data"]];
-
-    while (response["links"]["next"] != null) {
-      response = await getFrom(response["links"]["next"], authToken);
-
-      data = [...response["data"], ...data];
-    }
-
-    jointTransactions.putIfAbsent(id, () => data);
+    jointTransactions.putIfAbsent(id, () => [...data["data"]]);
+    print("end load $id");
   }
 
   return jointTransactions;

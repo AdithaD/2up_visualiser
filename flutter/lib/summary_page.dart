@@ -24,6 +24,26 @@ class _SummaryPageState extends State<SummaryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: Drawer(
+          child: Column(
+        children: [
+          DrawerHeader(
+            child: Container(
+                color: Theme.of(context).colorScheme.primary,
+                child: const Center(child: Text("2UP Visualiser"))),
+          ),
+          Expanded(
+              child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text("Delete tokens & data"),
+                onTap: () {},
+              )
+            ],
+          ))
+        ],
+      )),
       appBar: AppBar(
         title: const Text("Account Summary"),
         actions: [
@@ -42,51 +62,141 @@ class _SummaryPageState extends State<SummaryPage> {
 
             if (snapshot.connectionState == ConnectionState.done &&
                 totalCashflow != null) {
-              return SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: 8.0, horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      SummaryCard(
-                          title: "Total inflow",
-                          child: UpFlowPieChart(
-                            player1Contribution:
-                                totalCashflow.player1Cashflow.inFlow,
-                            player2Contribution:
-                                totalCashflow.player2Cashflow.inFlow,
-                            unaccountedContribution:
-                                totalCashflow.unaccountedCashflow.inFlow,
-                          )),
-                      SummaryCard(
-                          title: "Total outflow",
-                          child: UpFlowPieChart(
-                            player1Contribution:
-                                totalCashflow.player1Cashflow.outFlow.abs(),
-                            player2Contribution:
-                                totalCashflow.player2Cashflow.outFlow.abs(),
-                            unaccountedContribution:
-                                totalCashflow.unaccountedCashflow.outFlow.abs(),
-                          )),
-                      SummaryCard(
-                        title: "Total contribution",
-                        child: UpFlowBarChart(
-                          player1Contribution:
-                              totalCashflow.player1Cashflow.netFlow,
-                          player2Contribution:
-                              totalCashflow.player2Cashflow.netFlow,
-                          unaccountedContribution:
-                              totalCashflow.unaccountedCashflow.netFlow,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              );
+              return LayoutBuilder(builder: (context, constraints) {
+                if (constraints.maxWidth < 500) {
+                  return SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8.0, horizontal: 16.0),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: constraints.maxHeight * 0.5,
+                            child: SummaryCard(
+                                title: "Total inflow",
+                                child: UpFlowPieChart(
+                                  player1Contribution:
+                                      totalCashflow.player1Cashflow.inFlow,
+                                  player2Contribution:
+                                      totalCashflow.player2Cashflow.inFlow,
+                                  unaccountedContribution:
+                                      totalCashflow.unaccountedCashflow.inFlow,
+                                )),
+                          ),
+                          SizedBox(
+                              height: constraints.maxHeight * 0.5,
+                              child: SummaryCard(
+                                  title: "Total outflow",
+                                  child: UpFlowPieChart(
+                                    player1Contribution: totalCashflow
+                                        .player1Cashflow.outFlow
+                                        .abs(),
+                                    player2Contribution: totalCashflow
+                                        .player2Cashflow.outFlow
+                                        .abs(),
+                                    unaccountedContribution: totalCashflow
+                                        .unaccountedCashflow.outFlow
+                                        .abs(),
+                                  ))),
+                          SizedBox(
+                              height: constraints.maxHeight * 0.8,
+                              child: SummaryCard(
+                                title: "Total contribution",
+                                child: UpFlowBarChart(
+                                  player1Contribution:
+                                      totalCashflow.player1Cashflow.netFlow,
+                                  player2Contribution:
+                                      totalCashflow.player2Cashflow.netFlow,
+                                  unaccountedContribution:
+                                      totalCashflow.unaccountedCashflow.netFlow,
+                                ),
+                              )),
+                        ],
+                      ),
+                    ),
+                  );
+                } else {
+                  return SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 8.0, horizontal: 16.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          Flexible(
+                            flex: 1,
+                            child: SizedBox(
+                              height: constraints.maxHeight,
+                              child: Column(
+                                children: [
+                                  Flexible(
+                                    flex: 1,
+                                    child: SummaryCard(
+                                        title: "Total inflow",
+                                        child: UpFlowPieChart(
+                                          player1Contribution: totalCashflow
+                                              .player1Cashflow.inFlow,
+                                          player2Contribution: totalCashflow
+                                              .player2Cashflow.inFlow,
+                                          unaccountedContribution: totalCashflow
+                                              .unaccountedCashflow.inFlow,
+                                        )),
+                                  ),
+                                  Flexible(
+                                    flex: 1,
+                                    child: SummaryCard(
+                                        title: "Total outflow",
+                                        child: UpFlowPieChart(
+                                          player1Contribution: totalCashflow
+                                              .player1Cashflow.outFlow
+                                              .abs(),
+                                          player2Contribution: totalCashflow
+                                              .player2Cashflow.outFlow
+                                              .abs(),
+                                          unaccountedContribution: totalCashflow
+                                              .unaccountedCashflow.outFlow
+                                              .abs(),
+                                        )),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Flexible(
+                            flex: 1,
+                            child: SummaryCard(
+                              title: "Total contribution",
+                              child: UpFlowBarChart(
+                                player1Contribution:
+                                    totalCashflow.player1Cashflow.netFlow,
+                                player2Contribution:
+                                    totalCashflow.player2Cashflow.netFlow,
+                                unaccountedContribution:
+                                    totalCashflow.unaccountedCashflow.netFlow,
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              });
             } else {
-              return const Align(
+              return Align(
                   alignment: Alignment.center,
-                  child: CircularProgressIndicator());
+                  child: SizedBox(
+                    height: 200,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        CircularProgressIndicator(),
+                        Text("Loading your data")
+                      ],
+                    ),
+                  ));
             }
           }),
     );
@@ -203,27 +313,24 @@ class SummaryCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: SizedBox(
-          height: 300,
-          child: Column(children: [
-            Text(
-              title,
-              textAlign: TextAlign.left,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge!
-                  .copyWith(color: Colors.white),
+        child: Column(children: [
+          Text(
+            title,
+            textAlign: TextAlign.left,
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge!
+                .copyWith(color: Colors.white),
+          ),
+          const SizedBox(
+            height: 40,
+          ),
+          Expanded(
+            child: Center(
+              child: child,
             ),
-            const SizedBox(
-              height: 40,
-            ),
-            Expanded(
-              child: Center(
-                child: child,
-              ),
-            )
-          ]),
-        ),
+          )
+        ]),
       ),
     );
   }
