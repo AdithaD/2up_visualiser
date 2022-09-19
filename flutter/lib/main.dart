@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:_2up_visualiser/api/app_cache.dart';
-import 'package:_2up_visualiser/summary_page.dart';
-import 'package:_2up_visualiser/token_page.dart';
+import 'package:_2up_visualiser/pages/summary_page.dart';
+import 'package:_2up_visualiser/pages/token_page.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,7 +40,7 @@ class MyApp extends StatelessWidget {
               String? token_1 = sf.getString("token1");
               String? token_2 = sf.getString("token2");
               if (token_1 != null && token_2 != null) {
-                return SummaryPage(token_1: token_1, token_2: token_2);
+                return const SummaryPage();
               } else {
                 return const TokenPage();
               }

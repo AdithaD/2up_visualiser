@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart' as intl;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,36 @@ import 'package:_2up_visualiser/api/app_cache.dart';
 
 const upApiUrl = "https://api.up.com.au/api/v1";
 final currencyFormat = intl.NumberFormat("#,##0.00", "en_US");
+
+enum APIExceptionType { NOT_FOUND, NOT_AUTHORISED, OTHER }
+
+APIExceptionType extractType(http.Response res) {
+  switch (res.statusCode) {
+    case 404:
+      return APIExceptionType.NOT_FOUND;
+    case 401:
+      return APIExceptionType.NOT_AUTHORISED;
+    default:
+      return APIExceptionType.NOT_FOUND;
+  }
+}
+
+class APIException implements Exception {
+  final APIExceptionType type;
+
+  String getErrorMessage() {
+    switch (type) {
+      case APIExceptionType.NOT_FOUND:
+        return "A resource could not be found.";
+      case APIExceptionType.NOT_AUTHORISED:
+        return "Your tokens are not authorised.";
+      default:
+        return "Network error";
+    }
+  }
+
+  APIException(http.Response res) : type = extractType(res);
+}
 
 class Cashflow {
   int inFlow;
@@ -39,13 +70,20 @@ class Cashflow {
 
 class AccountByPlayer {
   final String accountId;
+  final String? accountName;
   final Cashflow player1Cashflow;
   final Cashflow player2Cashflow;
   final Cashflow unaccountedCashflow;
   final Map<String, Cashflow> sharedCashflows;
 
   const AccountByPlayer(this.accountId, this.player1Cashflow,
-      this.player2Cashflow, this.unaccountedCashflow, this.sharedCashflows);
+      this.player2Cashflow, this.unaccountedCashflow, this.sharedCashflows,
+      {this.accountName});
+  bool operator ==(dynamic other) =>
+      other != null && other is AccountByPlayer && accountId == other.accountId;
+
+  @override
+  int get hashCode => Object.hashAllUnordered([accountId]);
 }
 
 class PlayerAccountIds {
@@ -61,6 +99,8 @@ Future<Map<dynamic, dynamic>> getFrom(String url, String token) async {
 
   var decodedResponse = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
 
+  if (response.statusCode != 200) throw APIException(response);
+
   return decodedResponse;
 }
 
@@ -68,10 +108,7 @@ Future<Map<dynamic, dynamic>> getFromApi(String endpoint, String token,
     {shouldPaginate = true}) async {
   var url = Uri.parse("$upApiUrl/$endpoint");
 
-  var response =
-      await http.get(url, headers: {'Authorization': "Bearer $token"});
-
-  var body = jsonDecode(utf8.decode(response.bodyBytes)) as Map;
+  var body = await getFrom(url.toString(), token);
 
   List<Map<String, dynamic>> data = [...body["data"]];
 
@@ -219,6 +256,51 @@ Future<AccountByPlayer?> generateTotalCashflow() async {
         sharedTransactionsByAccount, player1AccountIds, player2AccountIds);
 
     return totalCashflows;
+  } else {
+    return null;
+  }
+}
+
+Future<Map<String, AccountByPlayer>?> getAccountBreakdown() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final token1 = prefs.getString("token1");
+  final token2 = prefs.getString("token2");
+
+  if (token1 != null && token2 != null) {
+    var player1AccountsJSON =
+        await getFromCacheOrUpdate("accounts", token1, cacheTimeout);
+    var player2AccountsJSON =
+        await getFromCacheOrUpdate("accounts", token2, cacheTimeout);
+
+    var player1AccountIds = extractAccountIds(player1AccountsJSON);
+    var player2AccountIds = extractAccountIds(player2AccountsJSON);
+
+    var player1AccountNameMap = mapAccountIdsToName(player1AccountsJSON);
+
+    var sharedTransactionsByAccount =
+        await getJointTransactions(player1AccountIds.jointAccounts, token1);
+
+    Map<String, AccountByPlayer> breakdown = {};
+
+    for (var st in sharedTransactionsByAccount.keys) {
+      var accountName = player1AccountNameMap[st];
+      var transactions = sharedTransactionsByAccount[st];
+
+      var generatedAbp = getCashFlowByPlayer(
+          st, transactions ?? [], player1AccountIds, player2AccountIds);
+
+      breakdown.putIfAbsent(
+          st,
+          () => AccountByPlayer(
+              generatedAbp.accountId,
+              generatedAbp.player1Cashflow,
+              generatedAbp.player2Cashflow,
+              generatedAbp.unaccountedCashflow,
+              generatedAbp.sharedCashflows,
+              accountName: accountName));
+    }
+    return breakdown;
   } else {
     return null;
   }
