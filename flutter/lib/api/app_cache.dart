@@ -45,21 +45,22 @@ Future<void> clearCache() async {
 
 Future<Map<dynamic, dynamic>> getFromCacheOrUpdate(
     String apiEndpoint, String token, int updateTimeout,
-    {bool forceRefresh = false}) async {
+    {bool forceRefresh = false, bool shouldPaginate = true}) async {
   Directory appDocDir = await getApplicationDocumentsDirectory();
   String fileName = generateCacheFileName(apiEndpoint, token);
+  print(fileName);
   File file = File(getCachePath(appDocDir.path, fileName));
 
   if (file.existsSync() && !forceRefresh) {
-    print("cache exists");
     var json = jsonDecode(file.readAsStringSync());
 
     int epochTimeSaved = json["meta"]["epochTime"];
 
     if (DateTime.now().millisecondsSinceEpoch >
         epochTimeSaved + updateTimeout) {
-      print("cache expired. regetting");
-      var data = await getFromApi(apiEndpoint, token, shouldCache: true);
+      var data =
+          await getFromApi(apiEndpoint, token, shouldPaginate: shouldPaginate);
+
       file.deleteSync();
       cacheData(fileName, data);
       return data;
@@ -67,8 +68,8 @@ Future<Map<dynamic, dynamic>> getFromCacheOrUpdate(
       return json["cache"];
     }
   } else {
-    print("no cache");
-    var data = await getFromApi(apiEndpoint, token, shouldCache: true);
+    var data =
+        await getFromApi(apiEndpoint, token, shouldPaginate: shouldPaginate);
 
     cacheData(fileName, data);
     return data;
