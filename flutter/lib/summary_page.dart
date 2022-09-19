@@ -1,6 +1,10 @@
+import 'dart:math';
+
 import 'package:_2up_visualiser/api/app_cache.dart';
 import 'package:_2up_visualiser/api/up_api.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({
@@ -32,30 +36,52 @@ class _SummaryPageState extends State<SummaryPage> {
         ],
       ),
       body: FutureBuilder(
-          future: generateAccountSummary(),
+          future: generateTotalCashflow(),
           builder: (context, snapshot) {
-            String? summary = snapshot.data;
+            var totalCashflow = snapshot.data;
+
             if (snapshot.connectionState == ConnectionState.done &&
-                summary != null) {
-              return Container(
-                color: Colors.red,
-                child: Column(children: [
-                  Text(
-                    widget.token_1,
-                    style: Theme.of(context).textTheme.bodyText1,
+                totalCashflow != null) {
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: 8.0, horizontal: 16.0),
+                  child: Column(
+                    children: [
+                      SummaryCard(
+                          title: "Total inflow",
+                          child: UpFlowPieChart(
+                            player1Contribution:
+                                totalCashflow.player1Cashflow.inFlow,
+                            player2Contribution:
+                                totalCashflow.player2Cashflow.inFlow,
+                            unaccountedContribution:
+                                totalCashflow.unaccountedCashflow.inFlow,
+                          )),
+                      SummaryCard(
+                          title: "Total outflow",
+                          child: UpFlowPieChart(
+                            player1Contribution:
+                                totalCashflow.player1Cashflow.outFlow.abs(),
+                            player2Contribution:
+                                totalCashflow.player2Cashflow.outFlow.abs(),
+                            unaccountedContribution:
+                                totalCashflow.unaccountedCashflow.outFlow.abs(),
+                          )),
+                      SummaryCard(
+                        title: "Total contribution",
+                        child: UpFlowBarChart(
+                          player1Contribution:
+                              totalCashflow.player1Cashflow.netFlow,
+                          player2Contribution:
+                              totalCashflow.player2Cashflow.netFlow,
+                          unaccountedContribution:
+                              totalCashflow.unaccountedCashflow.netFlow,
+                        ),
+                      )
+                    ],
                   ),
-                  const SizedBox(
-                    height: 40,
-                  ),
-                  Text(
-                    widget.token_2,
-                    style: Theme.of(context).textTheme.bodyText1,
-                  ),
-                  Text(
-                    summary,
-                    style: Theme.of(context).textTheme.bodyText1,
-                  ),
-                ]),
+                ),
               );
             } else {
               return const Align(
@@ -64,5 +90,185 @@ class _SummaryPageState extends State<SummaryPage> {
             }
           }),
     );
+  }
+}
+
+class UpFlowBarChart extends StatelessWidget {
+  const UpFlowBarChart({
+    Key? key,
+    required this.player1Contribution,
+    required this.player2Contribution,
+    required this.unaccountedContribution,
+  }) : super(key: key);
+
+  final int player1Contribution;
+  final int player2Contribution;
+  final int unaccountedContribution;
+
+  @override
+  Widget build(BuildContext context) {
+    return BarChart(BarChartData(
+        gridData: FlGridData(show: true),
+        maxY: (max(
+                max(player1Contribution.toDouble(),
+                    player2Contribution.toDouble()),
+                unaccountedContribution.toDouble()) *
+            1.5 /
+            100),
+        minY: min(
+            min(
+                    min(player1Contribution.toDouble(),
+                        player2Contribution.toDouble()),
+                    unaccountedContribution.toDouble()) *
+                1.5 /
+                100,
+            0),
+        barGroups: [
+          BarChartGroupData(x: 0, barRods: [
+            BarChartRodData(toY: player1Contribution.toDouble() / 100),
+          ]),
+          BarChartGroupData(x: 1, barRods: [
+            BarChartRodData(toY: player2Contribution.toDouble() / 100),
+          ]),
+          BarChartGroupData(x: 2, barRods: [
+            BarChartRodData(toY: unaccountedContribution.toDouble() / 100),
+          ])
+        ],
+        titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: leftTitles,
+                reservedSize: 42,
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: bottomTitles,
+                reservedSize: 42,
+              ),
+            ),
+            rightTitles: AxisTitles(),
+            topTitles: AxisTitles())));
+  }
+
+  Widget leftTitles(double value, TitleMeta meta) {
+    const style = TextStyle(
+      color: Color(0xff7589a2),
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    );
+
+    return SideTitleWidget(
+      axisSide: meta.axisSide,
+      space: 0,
+      child: double.parse(value.toStringAsFixed(2)) == value
+          ? Text(NumberFormat.compact().format(value), style: style)
+          : Container(),
+    );
+  }
+
+  Widget bottomTitles(double value, TitleMeta meta) {
+    List<String> titles = ["Player 1", "Player 2", "Unaccounted"];
+
+    Widget text = Text(
+      titles[value.toInt()],
+      style: const TextStyle(
+        color: Color(0xff7589a2),
+        fontWeight: FontWeight.bold,
+        fontSize: 14,
+      ),
+    );
+
+    return SideTitleWidget(
+      axisSide: meta.axisSide,
+      space: 16, //margin top
+      child: text,
+    );
+  }
+}
+
+class SummaryCard extends StatelessWidget {
+  const SummaryCard({Key? key, required this.child, this.title = ""})
+      : super(key: key);
+
+  final Widget child;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: const Color(0xff2c4260),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          height: 300,
+          child: Column(children: [
+            Text(
+              title,
+              textAlign: TextAlign.left,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge!
+                  .copyWith(color: Colors.white),
+            ),
+            const SizedBox(
+              height: 40,
+            ),
+            Expanded(
+              child: Center(
+                child: child,
+              ),
+            )
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class UpFlowPieChart extends StatelessWidget {
+  const UpFlowPieChart({
+    Key? key,
+    required this.player1Contribution,
+    required this.player2Contribution,
+    required this.unaccountedContribution,
+  }) : super(key: key);
+
+  final int player1Contribution;
+  final int player2Contribution;
+  final int unaccountedContribution;
+
+  int get total {
+    return player1Contribution + player2Contribution + unaccountedContribution;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    var titleStyle = Theme.of(context)
+        .textTheme
+        .bodyMedium!
+        .copyWith(fontWeight: FontWeight.bold, color: Colors.white);
+
+    return PieChart(PieChartData(sections: [
+      PieChartSectionData(
+          value: player1Contribution / total,
+          color: Colors.pink,
+          title: "\$${player1Contribution / 100}",
+          titleStyle: titleStyle),
+      PieChartSectionData(
+        value: player1Contribution / total,
+        color: Colors.purple,
+        title: "\$${player2Contribution / 100}",
+        titleStyle: titleStyle,
+      ),
+      PieChartSectionData(
+          value: unaccountedContribution / total,
+          color: Colors.grey,
+          title: "\$${unaccountedContribution / 100}",
+          titleStyle: titleStyle)
+    ]));
   }
 }

@@ -25,6 +25,10 @@ class Cashflow {
     }
   }
 
+  int get netFlow {
+    return inFlow + outFlow;
+  }
+
   @override
   String toString() {
     return "In: $inFlow, Out: $outFlow";
@@ -187,6 +191,33 @@ AccountByPlayer generateTotals(
 
   return AccountByPlayer("TOTAL", totalPlayer1Cashflow, totalPlayer2Cashflow,
       totalUnaccountedCashflow, {});
+}
+
+Future<AccountByPlayer?> generateTotalCashflow() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  final token1 = prefs.getString("token1");
+  final token2 = prefs.getString("token2");
+
+  if (token1 != null && token2 != null) {
+    var player1AccountsJSON =
+        await getFromCacheOrUpdate("accounts", token1, cacheTimeout);
+    var player2AccountsJSON =
+        await getFromCacheOrUpdate("accounts", token2, cacheTimeout);
+
+    var player1AccountIds = extractAccountIds(player1AccountsJSON);
+    var player2AccountIds = extractAccountIds(player2AccountsJSON);
+
+    var sharedTransactionsByAccount =
+        await getJointTransactions(player1AccountIds.jointAccounts, token1);
+
+    AccountByPlayer totalCashflows = generateTotals(
+        sharedTransactionsByAccount, player1AccountIds, player2AccountIds);
+
+    return totalCashflows;
+  } else {
+    return null;
+  }
 }
 
 Future<String> generateAccountSummary() async {
